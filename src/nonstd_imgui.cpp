@@ -8,7 +8,7 @@
 
 #include "nonstd_imgui.h"
 
-int nonstd_imgui_init(GLFWwindow *window)
+int nonstd_imgui_init(nonstd_imgui_t *gui, GLFWwindow *window)
 {
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -17,7 +17,7 @@ int nonstd_imgui_init(GLFWwindow *window)
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;  // Enable Gamepad Controls
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;     // Enable Docking
-    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;   // Enable Multi-Viewport / Platform Windows
+    // io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;   // Enable Multi-Viewport / Platform Windows
     // io.ConfigViewportsNoAutoMerge = true;
     // io.ConfigViewportsNoTaskBarIcon = true;
 
@@ -37,16 +37,38 @@ int nonstd_imgui_init(GLFWwindow *window)
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     const char *glsl_version = "#version 130";
     ImGui_ImplOpenGL3_Init(glsl_version);
+
+    // init imgui_handle_blocker
+    {
+        gui->base.update = nonstd_glfw_update;
+        gui->base.draw = nonstd_imgui_draw;
+        gui->base.cleanup = nonstd_imgui_cleanup;
+        gui->base.event_handler = nonstd_imgui_event_handler;
+        gui->base.sibling = NULL;
+        gui->base.child = NULL;
+        gui->options.file_options.options_enabled = 0;
+        gui->options.file_options.should_close = 0;
+        gui->options.file_options.requesting_close = 0;
+        gui->options.file_options.unsaved_changes = 1;
+        gui->options.file_options.save_changes = 0;
+        gui->options.tool_options.show_tool_about = 0;
+        gui->options.tool_options.show_tool_debug_log = 0;
+        gui->options.tool_options.show_tool_id_stack_tool = 0;
+        gui->options.tool_options.show_tool_metrics = 0;
+        gui->options.tool_options.show_tool_style_editor = 0;
+    }
+
     return 0;
 }
 
-int nonstd_imgui_cleanup()
+int nonstd_imgui_cleanup(void *ptr)
 {
-
+    nonstd_glfw_cleanup(ptr);
     // Cleanup
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
+
     return 0;
 }
 
@@ -196,7 +218,7 @@ void ShowFileMenu(imgui_file_options_t *file_options)
     ImGui::Separator();
     if (ImGui::MenuItem("Quit", "Alt+F4"))
     {
-        file_options->should_close = true;
+        file_options->requesting_close = true;
     }
 }
 
@@ -214,7 +236,7 @@ void ShowTools(imgui_tool_options_t *tool_options)
     }
 }
 
-void ShowClosePopUp(imgui_file_options_t *file_options, program_state_t *state)
+void ShowClosePopUp(imgui_file_options_t *file_options)
 {
     if (file_options->unsaved_changes)
     {
@@ -228,19 +250,26 @@ void ShowClosePopUp(imgui_file_options_t *file_options, program_state_t *state)
             if (ImGui::Button("Save and Exit", ImVec2(120, 0)))
             {
                 // TODO: Save
-                *state = STOP;
+                file_options->save_changes = true;
+                file_options->should_close = true;
+                file_options->requesting_close = false;
+
                 ImGui::CloseCurrentPopup();
             }
             ImGui::SameLine();
             if (ImGui::Button("Exit Without Saving", ImVec2(120, 0)))
             {
-                *state = STOP;
+                file_options->save_changes = false;
+                file_options->should_close = true;
+                file_options->requesting_close = false;
                 ImGui::CloseCurrentPopup();
             }
             ImGui::SameLine();
             if (ImGui::Button("Cancel", ImVec2(120, 0)))
             {
+                file_options->save_changes = false;
                 file_options->should_close = false;
+                file_options->requesting_close = false;
                 ImGui::CloseCurrentPopup();
             }
             ImGui::EndPopup();
@@ -248,12 +277,35 @@ void ShowClosePopUp(imgui_file_options_t *file_options, program_state_t *state)
     }
     else
     {
-        *state = STOP;
+        file_options->save_changes = false;
+        file_options->should_close = true;
+        file_options->requesting_close = false;
     }
 }
 
-int nonstd_imgui_event_blocker(void *ptr, void *e)
+int nonstd_imgui_draw(void *ptr)
 {
+    nonstd_imgui_t *gui = (nonstd_imgui_t *)ptr;
+    nonstd_imgui_start_frame();
+
+    nonstd_glfw_draw(ptr);
+
+    // imgui draw calls
+    {
+        ShowMainMenu(&gui->options);
+        if (gui->options.file_options.requesting_close)
+        {
+            ShowClosePopUp(&(gui->options.file_options));
+        }
+    }
+
+    nonstd_imgui_end_frame();
+    return 0;
+}
+
+int nonstd_imgui_event_handler(void *ptr, void *e)
+{
+    nonstd_imgui_t *gui = (nonstd_imgui_t *)ptr;
     ImGuiIO &io = ImGui::GetIO();
     event_t *event = (event_t *)e;
 
@@ -261,7 +313,10 @@ int nonstd_imgui_event_blocker(void *ptr, void *e)
     {
     case WINDOWPOS:
     case WINDOWSIZE:
+        break;
     case WINDOWCLOSE:
+        gui->options.file_options.requesting_close = glfwWindowShouldClose(event->windowclosedata.window);
+        break;
     case WINDOWREFRESH:
     case WINDOWFOCUS:
     case WINDOWICONIFY:

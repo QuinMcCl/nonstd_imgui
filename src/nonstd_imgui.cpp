@@ -1,14 +1,16 @@
+#include <GL/glew.h>
+#include <GL/glut.h>
+#include <GLFW/glfw3.h>
 
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
 #include <nonstd.h>
-#include <nonstd_glfw_opengl.h>
 
 #include "nonstd_imgui.h"
 
-int nonstd_imgui_init(nonstd_imgui_t *gui, GLFWwindow *window)
+int imgui_init(nonstd_imgui_t *gui, GLFWwindow *window)
 {
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -38,14 +40,7 @@ int nonstd_imgui_init(nonstd_imgui_t *gui, GLFWwindow *window)
     const char *glsl_version = "#version 130";
     ImGui_ImplOpenGL3_Init(glsl_version);
 
-    // init imgui_handle_blocker
     {
-        gui->base.update = nonstd_glfw_update;
-        gui->base.draw = nonstd_imgui_draw;
-        gui->base.cleanup = nonstd_imgui_cleanup;
-        gui->base.event_handler = nonstd_imgui_event_handler;
-        gui->base.sibling = NULL;
-        gui->base.child = NULL;
         gui->options.file_options.options_enabled = 0;
         gui->options.file_options.should_close = 0;
         gui->options.file_options.requesting_close = 0;
@@ -61,9 +56,8 @@ int nonstd_imgui_init(nonstd_imgui_t *gui, GLFWwindow *window)
     return 0;
 }
 
-int nonstd_imgui_cleanup(void *ptr)
+int imgui_cleanup()
 {
-    nonstd_glfw_cleanup(ptr);
     // Cleanup
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
@@ -72,7 +66,7 @@ int nonstd_imgui_cleanup(void *ptr)
     return 0;
 }
 
-int nonstd_imgui_start_frame()
+int imgui_start_frame()
 {
     // Start the Dear ImGui frame
     ImGui_ImplOpenGL3_NewFrame();
@@ -81,7 +75,7 @@ int nonstd_imgui_start_frame()
     return 0;
 }
 
-int nonstd_imgui_end_frame()
+int imgui_end_frame()
 {
     ImGuiIO &io = ImGui::GetIO();
     // Rendering
@@ -99,6 +93,10 @@ int nonstd_imgui_end_frame()
 
 void ShowMainMenu(imgui_main_menu_options_t *menu_options)
 {
+    if (menu_options->file_options.requesting_close)
+    {
+        ShowClosePopUp(&(menu_options->file_options));
+    }
     if (menu_options->tool_options.show_tool_metrics)
         ImGui::ShowMetricsWindow((bool *)&(menu_options->tool_options.show_tool_metrics));
     if (menu_options->tool_options.show_tool_debug_log)
@@ -283,66 +281,15 @@ void ShowClosePopUp(imgui_file_options_t *file_options)
     }
 }
 
-int nonstd_imgui_draw(void *ptr)
+int imgui_draw(nonstd_imgui_t *gui)
 {
-    nonstd_imgui_t *gui = (nonstd_imgui_t *)ptr;
-    nonstd_imgui_start_frame();
-
-    nonstd_glfw_draw(ptr);
+    imgui_start_frame();
 
     // imgui draw calls
     {
         ShowMainMenu(&gui->options);
-        if (gui->options.file_options.requesting_close)
-        {
-            ShowClosePopUp(&(gui->options.file_options));
-        }
     }
 
-    nonstd_imgui_end_frame();
+    imgui_end_frame();
     return 0;
-}
-
-int nonstd_imgui_event_handler(void *ptr, void *e)
-{
-    nonstd_imgui_t *gui = (nonstd_imgui_t *)ptr;
-    ImGuiIO &io = ImGui::GetIO();
-    event_t *event = (event_t *)e;
-
-    switch (event->type)
-    {
-    case WINDOWPOS:
-    case WINDOWSIZE:
-        break;
-    case WINDOWCLOSE:
-        gui->options.file_options.requesting_close = glfwWindowShouldClose(event->windowclosedata.window);
-        break;
-    case WINDOWREFRESH:
-    case WINDOWFOCUS:
-    case WINDOWICONIFY:
-    case WINDOWMAXIMIZE:
-    case FRAMEBUFFERSIZE:
-    case WINDOWCONTENTSCALE:
-        break;
-    case MOUSEBUTTON:
-    case CURSORPOS:
-    case CURSORENTER:
-    case SCROLL:
-        if (io.WantCaptureMouse)
-            return 0;
-        break;
-    case KEY:
-    case CHARPRESS:
-    case CHARMODS:
-        if (io.WantCaptureKeyboard)
-            return 0;
-        break;
-    case DROP:
-    case MONITOR:
-    case JOYSTICK:
-        break;
-    default:
-        return 0;
-    }
-    return nonstd_glfw_event_handler(ptr, e);
 }

@@ -32,22 +32,20 @@ extern "C"
 
     typedef struct nonstd_imgui_s
     {
-        nonstd_glfw_t base;
         imgui_main_menu_options_t options;
     } nonstd_imgui_t;
 
-    int nonstd_imgui_init(nonstd_imgui_t *gui, GLFWwindow *window);
-    int nonstd_imgui_cleanup(void *ptr);
-    int nonstd_imgui_start_frame();
-    int nonstd_imgui_end_frame();
+    int imgui_init(nonstd_imgui_t *gui, GLFWwindow *window);
+    int imgui_cleanup();
+    int imgui_start_frame();
+    int imgui_end_frame();
 
     void ShowMainMenu(imgui_main_menu_options_t *menu_options);
     void ShowFileMenu(imgui_file_options_t *file_options);
     void ShowTools(imgui_tool_options_t *tool_options);
-    void ShowClosePopUp(imgui_file_options_t *file_options, program_state_t *state);
+    void ShowClosePopUp(imgui_file_options_t *file_options);
 
-    int nonstd_imgui_draw(void *ptr);
-    int nonstd_imgui_event_handler(void *ptr, void *e);
+    int imgui_draw(nonstd_imgui_t *gui);
 
 #ifdef __cplusplus
 }

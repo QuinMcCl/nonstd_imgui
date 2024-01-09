@@ -35,6 +35,7 @@ extern "C"
 
     typedef struct nonstd_imgui_s
     {
+        int paused;
         imgui_main_menu_options_t options;
     } nonstd_imgui_t;
 
@@ -49,6 +50,9 @@ extern "C"
     void ShowClosePopUp(imgui_file_options_t *file_options);
 
 int imgui_draw(nonstd_imgui_t *gui, unsigned int numCameras, camera_t *cameraList, unsigned int numModels, model_t * modelList);
+
+int imgui_capture_key();
+int imgui_capture_mouse();
 
 #ifdef __cplusplus
 }

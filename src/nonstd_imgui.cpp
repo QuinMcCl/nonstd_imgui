@@ -41,6 +41,7 @@ int imgui_init(nonstd_imgui_t *gui, GLFWwindow *window)
     ImGui_ImplOpenGL3_Init(glsl_version);
 
     {
+        gui->paused = 1;
         gui->options.file_options.options_enabled = 0;
         gui->options.file_options.should_close = 0;
         gui->options.file_options.requesting_close = 0;
@@ -106,6 +107,9 @@ void ShowCamera(camera_t *camera)
 
     if (ImGui::CollapsingHeader("Camera"))
     {
+
+        ImGui::DragFloat("Sensitivity", &(camera->mMouseSensitivity), 0.005f, -FLT_MAX, FLT_MAX, "%f", flags);
+        ImGui::Separator();
         ImGui::DragFloat("Pos X", &(camera->mPosition[0]), 0.005f, -FLT_MAX, FLT_MAX, "%.3f", flags);
         ImGui::DragFloat("Pos Y", &(camera->mPosition[1]), 0.005f, -FLT_MAX, FLT_MAX, "%.3f", flags);
         ImGui::DragFloat("Pos Z", &(camera->mPosition[2]), 0.005f, -FLT_MAX, FLT_MAX, "%.3f", flags);
@@ -155,7 +159,7 @@ void ShowMaterial(material_t *material)
             // ImGui::Text("mTextureCount[%d]: %d", type, material->mTextureCount[type]);
             for (unsigned int index = 0; index < material->mTextureCount[type]; index++)
             {
-                ImGui::Text("Material[%d][%d]:%d", type, index, material->mTextureIndex[type][index]);
+                ImGui::Text("Material[%d][%d]:%lu", type, index, material->mTextureIndex[type][index]);
             }
 
             ImGui::TreePop();
@@ -263,7 +267,7 @@ void ShowModelToolWindow(bool *p_open, unsigned int num_models, model_t *model)
     ImGui::Separator();
     if (ImGui::TreeNode("Models"))
     {
-        ImGui::Text("num_models: %d", num_models);
+        // ImGui::Text("num_models: %d", num_models);
         for (unsigned int index = 0; index < num_models; index++)
         {
             if (ImGui::TreeNode((void *)(intptr_t)index, "Model %d", index))
@@ -477,6 +481,7 @@ int imgui_draw(nonstd_imgui_t *gui, unsigned int numCameras, camera_t *cameraLis
     imgui_start_frame();
 
     // imgui draw calls
+    if(gui->paused)
     {
         ShowMainMenu(&gui->options);
     }
@@ -488,4 +493,16 @@ int imgui_draw(nonstd_imgui_t *gui, unsigned int numCameras, camera_t *cameraLis
 
     imgui_end_frame();
     return 0;
+}
+
+int imgui_capture_key()
+{
+    ImGuiIO &io = ImGui::GetIO();
+    return io.WantCaptureKeyboard;
+}
+
+int imgui_capture_mouse()
+{
+    ImGuiIO &io = ImGui::GetIO();
+    return io.WantCaptureMouse;
 }

@@ -7,7 +7,7 @@
 #include <imgui_impl_opengl3.h>
 
 #include <nonstd.h>
-
+#include <nonstd_glfw_opengl.h>
 #include "nonstd_imgui.h"
 
 int imgui_init(nonstd_imgui_t *gui, GLFWwindow *window)
@@ -91,12 +91,197 @@ int imgui_end_frame()
     return 0;
 }
 
+void ShowMat4(const char *name, mat4 matrix)
+{
+    ImGui::Text(name);
+    ImGui::Text("[%.3f,%.3f,%.3f,%.3f]", matrix[0][0], matrix[1][0], matrix[2][0], matrix[3][0]);
+    ImGui::Text("[%.3f,%.3f,%.3f,%.3f]", matrix[0][1], matrix[1][1], matrix[2][1], matrix[3][1]);
+    ImGui::Text("[%.3f,%.3f,%.3f,%.3f]", matrix[0][2], matrix[1][2], matrix[2][2], matrix[3][2]);
+    ImGui::Text("[%.3f,%.3f,%.3f,%.3f]", matrix[0][3], matrix[1][3], matrix[2][3], matrix[3][3]);
+}
+
+void ShowCamera(camera_t *camera)
+{
+    static ImGuiSliderFlags flags = ImGuiSliderFlags_None;
+
+    if (ImGui::CollapsingHeader("Camera"))
+    {
+        ImGui::DragFloat("Pos X", &(camera->mPosition[0]), 0.005f, -FLT_MAX, FLT_MAX, "%.3f", flags);
+        ImGui::DragFloat("Pos Y", &(camera->mPosition[1]), 0.005f, -FLT_MAX, FLT_MAX, "%.3f", flags);
+        ImGui::DragFloat("Pos Z", &(camera->mPosition[2]), 0.005f, -FLT_MAX, FLT_MAX, "%.3f", flags);
+
+        ImGui::DragFloat("Pitch X", &(camera->mPitch), 0.05f, -180.0f, 180.0f, "%.3f", flags);
+        ImGui::DragFloat("Roll X", &(camera->mRoll), 0.05f, -180.0f, 180.0f, "%.3f", flags);
+        ImGui::DragFloat("Yaw X", &(camera->mYaw), 0.05f, -180.0f, 180.0f, "%.3f", flags);
+
+        ImGui::DragFloat("FOV", &(camera->mFOV), 0.05f, 0.0f, 180.0f, "%.3f", flags);
+        ImGui::Separator();
+
+        ImGui::Text("Front:  [%.3f,%.3f,%.3f]", camera->front[0], camera->front[1], camera->front[2]);
+        ImGui::Text("Woldup: [%.3f,%.3f,%.3f]", camera->mWorldUp[0], camera->mWorldUp[1], camera->mWorldUp[2]);
+        ImGui::Text("up:     [%.3f,%.3f,%.3f]", camera->up[0], camera->up[1], camera->up[2]);
+        ImGui::Separator();
+        ShowMat4("View:", camera->view);
+        ImGui::Separator();
+        ShowMat4("projection:", camera->projection);
+    }
+}
+
+void ShowCameraToolWindow(bool *p_open, unsigned int numCameras, camera_t *camera)
+{
+    if (!ImGui::Begin("Camera Tool Window", p_open, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::End();
+        return;
+    }
+    ImGui::Text("Camera Tool Window");
+    ImGui::Separator();
+    for (unsigned int index = 0; index < numCameras; index++)
+    {
+        ShowCamera(&(camera[index]));
+    }
+
+    ImGui::End();
+}
+
+void ShowMaterial(material_t *material)
+{
+    for (unsigned int type = 0; type < AI_TEXTURE_TYPE_MAX + 1; type++)
+    {
+
+        if (material->mTextureCount[type] > 0 && ImGui::TreeNode((void *)(intptr_t)type, "Texture %d", type))
+        {
+
+            // ImGui::Text("mTextureCount[%d]: %d", type, material->mTextureCount[type]);
+            for (unsigned int index = 0; index < material->mTextureCount[type]; index++)
+            {
+                ImGui::Text("Material[%d][%d]:%d", type, index, material->mTextureIndex[type][index]);
+            }
+
+            ImGui::TreePop();
+        }
+    }
+
+    // ImGui::Text("mNumMeshes: %d", material->mNumMeshes);
+    for (unsigned int index = 0; index < material->mNumMeshes; index++)
+    {
+        ImGui::Text("Material Mesh:%d", material->mMeshes[index]);
+    }
+}
+
+void ShowMesh(mesh_t *mesh)
+{
+    // ImGui::Text("NumInstances: %d", mesh->mNumInstances);
+    for (unsigned int index = 0; index < mesh->mNumInstances; index++)
+    {
+        if (ImGui::TreeNode((void *)(intptr_t)index, "Instance %d", index))
+        {
+            ShowMat4("Transform:", mesh->mTransformation[index]);
+            ImGui::TreePop();
+        }
+    }
+}
+
+void ShowShader(const shader_t *shader)
+{
+}
+
+void ShowNode(model_node_t *node, const char *parentstr)
+{
+    char strbuffer[1024];
+    ShowMat4("Transform:", node->mTransformation);
+
+    ImGui::Text("mNumMeshes: %d", node->mNumMeshes);
+    for (unsigned int index = 0; index < node->mNumMeshes; index++)
+    {
+        if (ImGui::TreeNode((void *)(intptr_t)index, "Mesh %d", index))
+        {
+            ImGui::Text("mMeshInstance: %d", node->mMeshData[index].mMeshInstance);
+            ImGui::Text("mMeshIndex: %d", node->mMeshData[index].mMeshIndex);
+            ImGui::TreePop();
+        }
+    }
+
+    // ImGui::Text("mNumChildren: %d", node->mNumChildren);
+    for (unsigned int index = 0; index < node->mNumChildren; index++)
+    {
+        snprintf(strbuffer, 1024, "%s %d", parentstr, index);
+        if (ImGui::TreeNode((void *)(intptr_t)index, strbuffer))
+        {
+            ShowNode(&(node->mChildren[index]), strbuffer);
+            ImGui::TreePop();
+        }
+    }
+}
+
+void ShowModel(model_t *model)
+{
+
+    if (model->mNumMaterials > 0 && ImGui::TreeNode("Materials"))
+    { // ImGui::Text("mNumMaterials: %d", model->mNumMaterials);
+        for (unsigned int materialIndex = 0; materialIndex < model->mNumMaterials; materialIndex++)
+        {
+            if (ImGui::TreeNode((void *)(intptr_t)materialIndex, "Material %d", materialIndex))
+            {
+                ShowMaterial(&(model->mMaterialList[materialIndex]));
+                ImGui::TreePop();
+            }
+        }
+        ImGui::TreePop();
+    }
+
+    if (model->mNumMeshes > 0 && ImGui::TreeNode("Meshes"))
+    { // ImGui::Text("mNumMeshes: %d", model->mNumMeshes);
+        for (unsigned int meshIndex = 0; meshIndex < model->mNumMeshes; meshIndex++)
+        {
+            if (ImGui::TreeNode((void *)(intptr_t)meshIndex, "Mesh %d", meshIndex))
+            {
+                ShowMesh(&(model->mMeshList[meshIndex]));
+                ImGui::TreePop();
+            }
+        }
+        ImGui::TreePop();
+    }
+
+    // ShowShader(model->mShader);
+
+    if (ImGui::TreeNode("RootNode"))
+    {
+        ShowNode(&(model->mRootNode), "Node");
+        ImGui::TreePop();
+    }
+}
+
+void ShowModelToolWindow(bool *p_open, unsigned int num_models, model_t *model)
+{
+    if (!ImGui::Begin("Model Tool Window", p_open, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::End();
+        return;
+    }
+    ImGui::Text("Model Tool Window");
+    ImGui::Separator();
+    if (ImGui::TreeNode("Models"))
+    {
+        ImGui::Text("num_models: %d", num_models);
+        for (unsigned int index = 0; index < num_models; index++)
+        {
+            if (ImGui::TreeNode((void *)(intptr_t)index, "Model %d", index))
+            {
+                ShowModel(&(model[index]));
+                ImGui::TreePop();
+            }
+        }
+        ImGui::TreePop();
+    }
+
+    ImGui::End();
+}
+
 void ShowMainMenu(imgui_main_menu_options_t *menu_options)
 {
     if (menu_options->file_options.requesting_close)
-    {
         ShowClosePopUp(&(menu_options->file_options));
-    }
     if (menu_options->tool_options.show_tool_metrics)
         ImGui::ShowMetricsWindow((bool *)&(menu_options->tool_options.show_tool_metrics));
     if (menu_options->tool_options.show_tool_debug_log)
@@ -230,6 +415,12 @@ void ShowTools(imgui_tool_options_t *tool_options)
         ImGui::MenuItem("ID Stack Tool", NULL, (bool *)&(tool_options->show_tool_id_stack_tool), has_debug_tools);
         ImGui::MenuItem("Style Editor", NULL, (bool *)&(tool_options->show_tool_style_editor));
         ImGui::MenuItem("About Dear ImGui", NULL, (bool *)&(tool_options->show_tool_about));
+
+        ImGui::Separator();
+
+        ImGui::MenuItem("Model_tool", NULL, (bool *)&(tool_options->show_model_tool), has_debug_tools);
+        ImGui::MenuItem("Camera_tool", NULL, (bool *)&(tool_options->show_camera_tool), has_debug_tools);
+
         ImGui::EndMenu();
     }
 }
@@ -281,7 +472,7 @@ void ShowClosePopUp(imgui_file_options_t *file_options)
     }
 }
 
-int imgui_draw(nonstd_imgui_t *gui)
+int imgui_draw(nonstd_imgui_t *gui, unsigned int numCameras, camera_t *cameraList, unsigned int numModels, model_t *modelList)
 {
     imgui_start_frame();
 
@@ -289,6 +480,11 @@ int imgui_draw(nonstd_imgui_t *gui)
     {
         ShowMainMenu(&gui->options);
     }
+
+    if (gui->options.tool_options.show_camera_tool)
+        ShowCameraToolWindow((bool *)&(gui->options.tool_options.show_camera_tool), numCameras, cameraList);
+    if (gui->options.tool_options.show_model_tool)
+        ShowModelToolWindow((bool *)&(gui->options.tool_options.show_model_tool), numModels, modelList);
 
     imgui_end_frame();
     return 0;

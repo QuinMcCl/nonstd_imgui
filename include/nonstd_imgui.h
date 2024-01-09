@@ -22,6 +22,9 @@ extern "C"
         int show_tool_id_stack_tool;
         int show_tool_style_editor;
         int show_tool_about;
+
+        int show_model_tool;
+        int show_camera_tool;
     } imgui_tool_options_t;
 
     typedef struct imgui_main_menu_options_s
@@ -45,7 +48,7 @@ extern "C"
     void ShowTools(imgui_tool_options_t *tool_options);
     void ShowClosePopUp(imgui_file_options_t *file_options);
 
-    int imgui_draw(nonstd_imgui_t *gui);
+int imgui_draw(nonstd_imgui_t *gui, unsigned int numCameras, camera_t *cameraList, unsigned int numModels, model_t * modelList);
 
 #ifdef __cplusplus
 }

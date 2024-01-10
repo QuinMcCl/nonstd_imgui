@@ -124,9 +124,9 @@ void ShowCamera(camera_t *camera)
         ImGui::Text("Woldup: [%.3f,%.3f,%.3f]", camera->mWorldUp[0], camera->mWorldUp[1], camera->mWorldUp[2]);
         ImGui::Text("up:     [%.3f,%.3f,%.3f]", camera->up[0], camera->up[1], camera->up[2]);
         ImGui::Separator();
-        ShowMat4("View:", camera->view);
+        ShowMat4("View:", camera->mView);
         ImGui::Separator();
-        ShowMat4("projection:", camera->projection);
+        ShowMat4("projection:", camera->mProjection);
     }
 }
 

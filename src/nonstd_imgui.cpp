@@ -147,21 +147,38 @@ void ShowCameraToolWindow(bool *p_open, unsigned int numCameras, camera_t *camer
     ImGui::End();
 }
 
+void showTexture(material_texture_t *texture)
+{
+
+    ImGui::Text("path: %s", texture->path.data);
+    ImGui::Text("mapping: %d", texture->mapping);
+    ImGui::Text("uvindex: %u", texture->uvindex);
+    ImGui::Text("blend: %.3f", texture->blend);
+    ImGui::Text("op: %u", texture->op);
+    ImGui::Text("mapmode: %u", texture->mapmode);
+    ImGui::Text("flags: %u", texture->flags);
+    ImGui::Text("mTextureIndex: %lu", texture->mTextureIndex);
+}
+
 void ShowMaterial(material_t *material)
 {
     for (unsigned int type = 0; type < AI_TEXTURE_TYPE_MAX + 1; type++)
     {
-
-        if (material->mTextureCount[type] > 0 && ImGui::TreeNode((void *)(intptr_t)type, "Texture %d", type))
+        if (material->mTextureCount[type] > 0)
         {
-
-            // ImGui::Text("mTextureCount[%d]: %d", type, material->mTextureCount[type]);
-            for (unsigned int index = 0; index < material->mTextureCount[type]; index++)
+            if (ImGui::TreeNode((void *)(intptr_t)type, "Texture %s", materialNames[type]))
             {
-                ImGui::Text("Material[%d][%d]:%lu", type, index, material->mTextureIndex[type][index]);
-            }
+                for (unsigned int index = 0; index < material->mTextureCount[type]; index++)
+                {
+                    if (ImGui::TreeNode((void *)(intptr_t)index, "Texture %d", index))
+                    {
+                        showTexture(&(material->mTextures[type][index]));
+                        ImGui::TreePop();
+                    }
+                }
 
-            ImGui::TreePop();
+                ImGui::TreePop();
+            }
         }
     }
 
@@ -480,7 +497,7 @@ int imgui_draw(nonstd_imgui_t *gui, unsigned int numCameras, camera_t *cameraLis
     imgui_start_frame();
 
     // imgui draw calls
-    if(gui->paused)
+    if (gui->paused)
     {
         ShowMainMenu(&gui->options);
     }

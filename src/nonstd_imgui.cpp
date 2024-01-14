@@ -160,6 +160,12 @@ void showTexture(material_texture_t *texture)
     ImGui::Text("mTextureIndex: %lu", texture->mTextureIndex);
 }
 
+#define X(N) #N, 
+const char *materialNames[] = {
+    XMATERIALS
+};
+#undef X
+
 void ShowMaterial(material_t *material)
 {
     for (unsigned int type = 0; type < AI_TEXTURE_TYPE_MAX + 1; type++)

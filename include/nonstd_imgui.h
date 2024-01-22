@@ -49,8 +49,13 @@ extern "C"
     void ShowTools(imgui_tool_options_t *tool_options);
     void ShowClosePopUp(imgui_file_options_t *file_options);
 
-int imgui_draw(nonstd_imgui_t *gui, unsigned int numCameras, camera_t *cameraList, unsigned int numModels, model_t * modelList);
-
+int imgui_draw(
+    nonstd_imgui_t *gui,
+    unsigned int numCameras,
+    camera_t *cameraList,
+    unsigned int numModels,
+    model_t *modelList);
+    
 int imgui_capture_key();
 int imgui_capture_mouse();
 

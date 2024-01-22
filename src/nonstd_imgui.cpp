@@ -100,6 +100,15 @@ void ShowMat4(const char *name, mat4 matrix)
     ImGui::Text("[%.3f,%.3f,%.3f,%.3f]", matrix[0][3], matrix[1][3], matrix[2][3], matrix[3][3]);
 }
 
+void ShowAiMat4(const char *name, aiMatrix4x4 matrix)
+{
+    ImGui::Text(name);
+    ImGui::Text("[%.3f,%.3f,%.3f,%.3f]", matrix.a1, matrix.b1, matrix.c1, matrix.d1);
+    ImGui::Text("[%.3f,%.3f,%.3f,%.3f]", matrix.a2, matrix.b2, matrix.c2, matrix.d2);
+    ImGui::Text("[%.3f,%.3f,%.3f,%.3f]", matrix.a3, matrix.b3, matrix.c3, matrix.d3);
+    ImGui::Text("[%.3f,%.3f,%.3f,%.3f]", matrix.a4, matrix.b4, matrix.c4, matrix.d4);
+}
+
 void ShowCamera(camera_t *camera)
 {
     static ImGuiSliderFlags flags = ImGuiSliderFlags_None;
@@ -160,10 +169,9 @@ void showTexture(material_texture_t *texture)
     ImGui::Text("mTextureIndex: %lu", texture->mTextureIndex);
 }
 
-#define X(N) #N, 
+#define X(N) #N,
 const char *materialNames[] = {
-    XMATERIALS
-};
+    XMATERIALS};
 #undef X
 
 void ShowMaterial(material_t *material)
@@ -302,6 +310,311 @@ void ShowModelToolWindow(bool *p_open, unsigned int num_models, model_t *model)
     }
 
     ImGui::End();
+}
+
+void showAiMetadata(const char *name, aiMetadata *Meta)
+{
+    if (Meta != NULL && ImGui::TreeNode(name))
+    {
+        for (unsigned int i = 0; i < Meta->mNumProperties; i++)
+        {
+            aiString k = Meta->mKeys[i];
+            aiMetadataType t = Meta->mValues[i].mType;
+            void *e = Meta->mValues[i].mData;
+
+            switch (t)
+            {
+            case AI_BOOL:
+                ImGui::Text("%s : %d", k.data, *static_cast<bool *>(e));
+                break;
+            case AI_INT32:
+                ImGui::Text("%s : %d", k.data, *static_cast<int32_t *>(e));
+                break;
+            case AI_UINT64:
+                ImGui::Text("%s : %lu", k.data, *static_cast<uint64_t *>(e));
+                break;
+            case AI_FLOAT:
+                ImGui::Text("%s : %f", k.data, *static_cast<float *>(e));
+                break;
+            case AI_DOUBLE:
+                ImGui::Text("%s : %f", k.data, *static_cast<double *>(e));
+                break;
+            case AI_AISTRING:
+                ImGui::Text("%s : %s", k.data, static_cast<aiString *>(e)->data);
+                break;
+            case AI_AIVECTOR3D:
+            {
+                aiVector3D *v = static_cast<aiVector3D *>(e);
+                ImGui::Text("%s : [%f, %f, %f]", k.data, v->x, v->y, v->z);
+                break;
+            }
+            case AI_AIMETADATA:
+            {
+                char newName[MAXLEN];
+                snprintf(newName, MAXLEN, "%s:%d", name, i);
+                showAiMetadata(newName, static_cast<aiMetadata *>(e));
+                break;
+            }
+            case AI_INT64:
+                ImGui::Text("%s : %ld", k.data, *static_cast<int64_t *>(e));
+                break;
+            case AI_UINT32:
+                ImGui::Text("%s : %u", k.data, *static_cast<uint32_t *>(e));
+                break;
+            default:
+                break;
+            }
+        }
+        ImGui::TreePop();
+    }
+}
+
+void ShowAiNode(aiNode *node)
+{
+    if (node != NULL && ImGui::TreeNode(node->mName.data))
+    {
+        ShowAiMat4("Transform:", node->mTransformation);
+        ImGui::Text("Parent : %s", node->mParent == NULL ? "None" : node->mParent->mName.data);
+        ImGui::Text("NumMeshes : %d", node->mNumMeshes);
+
+        if (ImGui::TreeNode((void *)(intptr_t)node->mNumMeshes, "NumMeshes %d", node->mNumMeshes))
+        {
+            for (unsigned int i = 0; i < node->mNumMeshes; i++)
+            {
+                ImGui::Text("Mesh[%u] : %u", i, node->mMeshes[i]);
+            }
+            ImGui::TreePop();
+        }
+        showAiMetadata("Metadata", node->mMetaData);
+
+        if (ImGui::TreeNode((void *)(intptr_t)node->mNumChildren, "NumChildren %d", node->mNumChildren))
+        {
+            for (unsigned int i = 0; i < node->mNumChildren; i++)
+            {
+                ShowAiNode(node->mChildren[i]);
+            }
+            ImGui::TreePop();
+        }
+        ImGui::TreePop();
+    }
+}
+
+void ShowAiMesh(aiMesh *mesh)
+{
+    bool points = aiPrimitiveType_POINT & mesh->mPrimitiveTypes;
+    bool lines = aiPrimitiveType_LINE & mesh->mPrimitiveTypes;
+    bool tris = aiPrimitiveType_TRIANGLE & mesh->mPrimitiveTypes;
+    bool polys = aiPrimitiveType_POLYGON & mesh->mPrimitiveTypes;
+    bool ngons = aiPrimitiveType_NGONEncodingFlag & mesh->mPrimitiveTypes;
+    ImGui::BeginDisabled();
+    ImGui::Checkbox("points", &points);
+    ImGui::Checkbox("lines", &lines);
+    ImGui::Checkbox("tris", &tris);
+    ImGui::Checkbox("polys", &polys);
+    ImGui::Checkbox("ngons", &ngons);
+    ImGui::EndDisabled();
+    ImGui::Separator();
+    ImGui::Text("Name: %s", mesh->mName.data);
+    ImGui::Separator();
+    ImGui::Text("NumFaces: %u", mesh->mNumFaces);
+    if (mesh->mFaces != NULL && ImGui::TreeNode("Mesh Faces"))
+    {
+        for (unsigned int i = 0; i < mesh->mNumFaces; i++)
+        {
+            if (mesh->mFaces[i].mIndices != NULL && ImGui::TreeNode((void *)(intptr_t)i, "Face[%d]", i))
+            {
+                for (unsigned int j = 0; j < mesh->mFaces[i].mNumIndices; j++)
+                {
+                    if (j > 0)
+                    {
+                        ImGui::SameLine();
+                        ImGui::Text(", ");
+                        ImGui::SameLine();
+                    }
+                    ImGui::Text("%d", mesh->mFaces[i].mIndices[j]);
+                }
+                ImGui::TreePop();
+            }
+        }
+        ImGui::TreePop();
+    }
+    ImGui::Text("Num Vertecies: %u", mesh->mNumVertices);
+    if (mesh->mVertices != NULL && ImGui::TreeNode("Mesh Verticies"))
+    {
+        for (unsigned int i = 0; i < mesh->mNumVertices; i++)
+        {
+
+            ImGui::Text("Vertex : [%u]", i);
+            if (mesh->mVertices != NULL)
+            {
+                aiVector3D v = mesh->mVertices[i];
+                ImGui::SameLine();
+                ImGui::Text("\tPos: [%f, %f, %f]", v.x, v.y, v.z);
+            }
+            if (mesh->mNormals != NULL)
+            {
+                aiVector3D v = mesh->mNormals[i];
+                ImGui::SameLine();
+                ImGui::Text("\tnorm: [%f, %f, %f]", v.x, v.y, v.z);
+            }
+            if (mesh->mTangents != NULL)
+            {
+                aiVector3D v = mesh->mTangents[i];
+                ImGui::SameLine();
+                ImGui::Text("\tTan: [%f, %f, %f]", v.x, v.y, v.z);
+            }
+            if (mesh->mBitangents != NULL)
+            {
+                aiVector3D v = mesh->mBitangents[i];
+                ImGui::SameLine();
+                ImGui::Text("\tBitTan: [%f, %f, %f]", v.x, v.y, v.z);
+            }
+            for (unsigned int t = 0; t < AI_MAX_NUMBER_OF_COLOR_SETS; t++)
+            {
+                if (mesh->mColors[t] != NULL)
+                {
+                    aiColor4D v = mesh->mColors[t][i];
+                    ImGui::Text("\tColor[%u]: [%f, %f, %f, %f]", t, v.r, v.g, v.b, v.a);
+                }
+            }
+            for (unsigned int t = 0; t < AI_MAX_NUMBER_OF_TEXTURECOORDS; t++)
+            {
+                if (mesh->mTextureCoords[t] != NULL)
+                {
+                    aiVector3D v = mesh->mTextureCoords[t][i];
+                    ImGui::Text("\tUV[%u]: [%f, %f, %f]", t, v.x, v.y, v.z);
+                }
+            }
+        }
+        ImGui::TreePop();
+    }
+    ImGui::Text("Numbones: %u", mesh->mNumBones);
+    if (mesh->mBones != NULL && ImGui::TreeNode("Mesh Bones"))
+    {
+        for (unsigned int i = 0; i < mesh->mNumBones; i++)
+        {
+            if (mesh->mBones[i] != NULL && ImGui::TreeNode((void *)(intptr_t)i, "Bone[%d]", i))
+            {
+                ShowAiNode(mesh->mBones[i]->mArmature);
+                ShowAiNode(mesh->mBones[i]->mNode);
+                
+                ImGui::Text(mesh->mBones[i]->mName.data);
+                ShowAiMat4("OffsetMatrix", mesh->mBones[i]->mOffsetMatrix);
+
+                for (unsigned int j = 0; j < mesh->mBones[i]->mNumWeights; j++)
+                {
+                    ImGui::Text("ID %d, WEIGHT %f", mesh->mBones[i]->mWeights[j].mVertexId, mesh->mBones[i]->mWeights[j].mWeight);
+                }
+
+                ImGui::TreePop();
+            }
+        }
+        ImGui::TreePop();
+    }
+    ImGui::Text("NumAnimMeshes: %u", mesh->mNumAnimMeshes);
+    if (mesh->mAnimMeshes != NULL && ImGui::TreeNode("Mesh Animeshes"))
+    {
+        for (unsigned int i = 0; i < mesh->mNumAnimMeshes; i++)
+        {
+            if (mesh->mAnimMeshes[i] != NULL && ImGui::TreeNode((void *)(intptr_t)i, "AnimMesh[%d]", i))
+            {
+                
+                ImGui::TreePop();
+            }
+        }
+        ImGui::TreePop();
+    }
+    
+
+
+}
+void ShowAiMaterial(aiMaterial *mesh) {}
+void ShowAiAnimation(aiAnimation *mesh) {}
+void ShowAiTexture(aiTexture *mesh) {}
+void ShowAiLights(aiLight *mesh) {}
+void ShowAiCameras(aiCamera *mesh) {}
+void ShowAiSkeletons(aiSkeleton *mesh) {}
+
+void ShowAiScene(const aiScene *scene)
+{
+    if (ImGui::TreeNode("SceneFlags"))
+    {
+        bool scene_incomplete = AI_SCENE_FLAGS_INCOMPLETE & scene->mFlags;
+        bool scene_validated = AI_SCENE_FLAGS_VALIDATED & scene->mFlags;
+        bool scene_validationWarning = AI_SCENE_FLAGS_VALIDATION_WARNING & scene->mFlags;
+        bool scene_non_verbode_format = AI_SCENE_FLAGS_NON_VERBOSE_FORMAT & scene->mFlags;
+        bool scene_terrain = AI_SCENE_FLAGS_TERRAIN & scene->mFlags;
+        bool scene_allow_shared = AI_SCENE_FLAGS_ALLOW_SHARED & scene->mFlags;
+        ImGui::BeginDisabled();
+        ImGui::Checkbox("INCOMPLETE", &scene_incomplete);
+        ImGui::Checkbox("VALIDATED", &scene_validated);
+        ImGui::Checkbox("VALIDATON_WARNING", &scene_validationWarning);
+        ImGui::Checkbox("NON_VERBOSE_FORMAT", &scene_non_verbode_format);
+        ImGui::Checkbox("TERRAIN", &scene_terrain);
+        ImGui::Checkbox("ALLOW_SHARED", &scene_allow_shared);
+        ImGui::EndDisabled();
+        ImGui::Separator();
+
+        ImGui::TreePop();
+    }
+    ShowAiNode(scene->mRootNode);
+    if (scene->mMeshes != NULL && ImGui::TreeNode("Scene Meshes"))
+    {
+        for (unsigned int i = 0; i < scene->mNumMeshes; i++)
+        {
+            ShowAiMesh(scene->mMeshes[i]);
+        }
+        ImGui::TreePop();
+    }
+    if (scene->mMaterials != NULL && ImGui::TreeNode("Scene Materials"))
+    {
+        for (unsigned int i = 0; i < scene->mNumMaterials; i++)
+        {
+            ShowAiMaterial(scene->mMaterials[i]);
+        }
+        ImGui::TreePop();
+    }
+    if (scene->mAnimations != NULL && ImGui::TreeNode("Scene Animations"))
+    {
+        for (unsigned int i = 0; i < scene->mNumAnimations; i++)
+        {
+            ShowAiAnimation(scene->mAnimations[i]);
+        }
+        ImGui::TreePop();
+    }
+    if (scene->mTextures != NULL && ImGui::TreeNode("Scene Textures"))
+    {
+        for (unsigned int i = 0; i < scene->mNumTextures; i++)
+        {
+            ShowAiTexture(scene->mTextures[i]);
+        }
+        ImGui::TreePop();
+    }
+    if (scene->mLights != NULL && ImGui::TreeNode("Scene Lights"))
+    {
+        for (unsigned int i = 0; i < scene->mNumLights; i++)
+        {
+            ShowAiLights(scene->mLights[i]);
+        }
+        ImGui::TreePop();
+    }
+    if (scene->mCameras != NULL && ImGui::TreeNode("Scene Cameras"))
+    {
+        for (unsigned int i = 0; i < scene->mNumCameras; i++)
+        {
+            ShowAiCameras(scene->mCameras[i]);
+        }
+        ImGui::TreePop();
+    }
+    if (scene->mSkeletons != NULL && ImGui::TreeNode("Scene Skeletons"))
+    {
+        for (unsigned int i = 0; i < scene->mNumSkeletons; i++)
+        {
+            ShowAiSkeletons(scene->mSkeletons[i]);
+        }
+        ImGui::TreePop();
+    }
+    showAiMetadata("Metadata", scene->mMetaData);
 }
 
 void ShowMainMenu(imgui_main_menu_options_t *menu_options)
@@ -446,7 +759,7 @@ void ShowTools(imgui_tool_options_t *tool_options)
 
         ImGui::MenuItem("Model_tool", NULL, (bool *)&(tool_options->show_model_tool), has_debug_tools);
         ImGui::MenuItem("Camera_tool", NULL, (bool *)&(tool_options->show_camera_tool), has_debug_tools);
-
+        
         ImGui::EndMenu();
     }
 }
@@ -498,7 +811,12 @@ void ShowClosePopUp(imgui_file_options_t *file_options)
     }
 }
 
-int imgui_draw(nonstd_imgui_t *gui, unsigned int numCameras, camera_t *cameraList, unsigned int numModels, model_t *modelList)
+int imgui_draw(
+    nonstd_imgui_t *gui,
+    unsigned int numCameras,
+    camera_t *cameraList,
+    unsigned int numModels,
+    model_t *modelList)
 {
     imgui_start_frame();
 
@@ -512,7 +830,7 @@ int imgui_draw(nonstd_imgui_t *gui, unsigned int numCameras, camera_t *cameraLis
         ShowCameraToolWindow((bool *)&(gui->options.tool_options.show_camera_tool), numCameras, cameraList);
     if (gui->options.tool_options.show_model_tool)
         ShowModelToolWindow((bool *)&(gui->options.tool_options.show_model_tool), numModels, modelList);
-
+    
     imgui_end_frame();
     return 0;
 }

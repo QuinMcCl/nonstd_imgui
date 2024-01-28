@@ -25,6 +25,7 @@ extern "C"
 
         int show_model_tool;
         int show_camera_tool;
+        int show_task_queue_tool;
     } imgui_tool_options_t;
 
     typedef struct imgui_main_menu_options_s
@@ -51,6 +52,7 @@ extern "C"
 
 int imgui_draw(
     nonstd_imgui_t *gui,
+    task_queue_t * tq,
     unsigned int numCameras,
     camera_t *cameraList,
     unsigned int numModels,

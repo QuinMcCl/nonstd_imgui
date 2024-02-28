@@ -191,7 +191,7 @@ void showTexture(material_texture_t *texture)
     ImGui::Text("op: %u", texture->op);
     ImGui::Text("mapmode: %u", texture->mapmode);
     ImGui::Text("flags: %u", texture->flags);
-    ImGui::Text("mTextureIndex: %lu", texture->mTextureIndex);
+    ImGui::Text("mTextureIndex: %lu", texture->mTexturePtr);
 }
 
 #define X(N) #N,

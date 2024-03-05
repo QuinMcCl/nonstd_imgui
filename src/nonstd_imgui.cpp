@@ -109,25 +109,32 @@ void ShowAiMat4(const char *name, aiMatrix4x4 matrix)
     ImGui::Text("[%.3f,%.3f,%.3f,%.3f]", matrix.a4, matrix.b4, matrix.c4, matrix.d4);
 }
 
-
-void ShowTQToolWindow(bool *p_open, task_queue_t * tq)
+void ShowTQToolWindow(bool *p_open, task_queue_t *tq)
 {
-    if (!ImGui::Begin("Camera Tool Window", p_open, ImGuiWindowFlags_AlwaysAutoResize))
+    if (!ImGui::Begin("Task Queue Tool Window", p_open, ImGuiWindowFlags_AlwaysAutoResize))
     {
         ImGui::End();
         return;
     }
-    ImGui::Text("Task Queue");
-    queue_t * q = &(tq->queue);
-    void *item = q->tail;
-    while( item != q->head)
+    ImGui::Text("Task Queue Tool Window");
+    if (ImGui::Button("Async Test"))
     {
-        async_task_s * task = (async_task_s *)item;
-        ImGui::Text("%s",task->funcName);
-        q->tail += q->item_size;
-        if (q->tail + q->item_size > q->start + q->buf_len)
+        async_task_t task = {0};
+        task.funcName = "async_async_test";
+        task.func = async_async_test;
+        task.args = tq;
+        QUEUE_PUSH(tq->queue, task, 1);
+    }
+    queue_t *q = &(tq->queue);
+    void *item = q->tail;
+    while (item != q->head)
+    {
+        async_task_t *task = (async_task_t *)item;
+        ImGui::Text("%s", task->funcName);
+        item += q->item_size;
+        if (item + q->item_size > q->start + q->buf_len)
         {
-            q->tail = q->start;
+            item = q->start;
         }
     }
 
@@ -522,7 +529,7 @@ void ShowAiMesh(aiMesh *mesh)
             {
                 ShowAiNode(mesh->mBones[i]->mArmature);
                 ShowAiNode(mesh->mBones[i]->mNode);
-                
+
                 ImGui::Text(mesh->mBones[i]->mName.data);
                 ShowAiMat4("OffsetMatrix", mesh->mBones[i]->mOffsetMatrix);
 
@@ -543,15 +550,12 @@ void ShowAiMesh(aiMesh *mesh)
         {
             if (mesh->mAnimMeshes[i] != NULL && ImGui::TreeNode((void *)(intptr_t)i, "AnimMesh[%d]", i))
             {
-                
+
                 ImGui::TreePop();
             }
         }
         ImGui::TreePop();
     }
-    
-
-
 }
 void ShowAiMaterial(aiMaterial *mesh) {}
 void ShowAiAnimation(aiAnimation *mesh) {}
@@ -785,7 +789,7 @@ void ShowTools(imgui_tool_options_t *tool_options)
         ImGui::MenuItem("Model_tool", NULL, (bool *)&(tool_options->show_model_tool), has_debug_tools);
         ImGui::MenuItem("Camera_tool", NULL, (bool *)&(tool_options->show_camera_tool), has_debug_tools);
         ImGui::MenuItem("Task_Queue_tool", NULL, (bool *)&(tool_options->show_task_queue_tool), has_debug_tools);
-        
+
         ImGui::EndMenu();
     }
 }
@@ -839,7 +843,7 @@ void ShowClosePopUp(imgui_file_options_t *file_options)
 
 int imgui_draw(
     nonstd_imgui_t *gui,
-    task_queue_t * tq,
+    task_queue_t *tq,
     unsigned int numCameras,
     camera_t *cameraList,
     unsigned int numModels,
@@ -859,7 +863,7 @@ int imgui_draw(
         ShowCameraToolWindow((bool *)&(gui->options.tool_options.show_camera_tool), numCameras, cameraList);
     if (gui->options.tool_options.show_model_tool)
         ShowModelToolWindow((bool *)&(gui->options.tool_options.show_model_tool), numModels, modelList);
-    
+
     imgui_end_frame();
     return 0;
 }

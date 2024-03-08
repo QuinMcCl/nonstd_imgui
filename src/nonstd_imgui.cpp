@@ -66,31 +66,6 @@ int imgui_cleanup()
     return 0;
 }
 
-int imgui_start_frame()
-{
-    // Start the Dear ImGui frame
-    ImGui_ImplOpenGL3_NewFrame();
-    ImGui_ImplGlfw_NewFrame();
-    ImGui::NewFrame();
-    return 0;
-}
-
-int imgui_end_frame()
-{
-    ImGuiIO &io = ImGui::GetIO();
-    // Rendering
-    ImGui::Render();
-    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-    {
-        GLFWwindow *backup_current_context = glfwGetCurrentContext();
-        ImGui::UpdatePlatformWindows();
-        ImGui::RenderPlatformWindowsDefault();
-        glfwMakeContextCurrent(backup_current_context);
-    }
-    return 0;
-}
-
 void ShowMat4(const char *name, mat4 matrix)
 {
     ImGui::Text(name);
@@ -849,7 +824,13 @@ int imgui_draw(
     unsigned int numModels,
     model_t *modelList)
 {
-    imgui_start_frame();
+
+    ImGuiIO &io = ImGui::GetIO();
+
+    // Start the Dear ImGui frame
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
 
     // imgui draw calls
     if (gui->paused)
@@ -864,7 +845,17 @@ int imgui_draw(
     if (gui->options.tool_options.show_model_tool)
         ShowModelToolWindow((bool *)&(gui->options.tool_options.show_model_tool), numModels, modelList);
 
-    imgui_end_frame();
+    // Rendering
+    ImGui::Render();
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+    {
+        GLFWwindow *backup_current_context = glfwGetCurrentContext();
+        ImGui::UpdatePlatformWindows();
+        ImGui::RenderPlatformWindowsDefault();
+        glfwMakeContextCurrent(backup_current_context);
+    }
+
     return 0;
 }
 

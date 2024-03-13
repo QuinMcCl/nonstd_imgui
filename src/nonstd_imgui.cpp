@@ -7,6 +7,7 @@
 
 #include <nonstd.h>
 #include <nonstd_glfw_opengl.h>
+#include <tile_map.h>
 #include "nonstd_imgui.h"
 
 int imgui_init(nonstd_imgui_t *gui, GLFWwindow *window)
@@ -621,6 +622,44 @@ void ShowAiScene(const aiScene *scene)
     showAiMetadata("Metadata", scene->mMetaData);
 }
 
+void ShowMapToolWindow(bool *p_open, map_t *map)
+{
+    if (!ImGui::Begin("Map Tool Window", p_open, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::End();
+        return;
+    }
+    static ImGuiSliderFlags flags = ImGuiSliderFlags_None;
+
+    ImGui::DragFloat("source_Ellipsoid.a", &(map->source_Ellipsoid.a), 0.005f, -FLT_MAX, FLT_MAX, "%f", flags);
+    ImGui::DragFloat("source_Ellipsoid.b", &(map->source_Ellipsoid.b), 0.005f, -FLT_MAX, FLT_MAX, "%f", flags);
+    ImGui::Separator();
+    ImGui::DragFloat("target_Ellipsoid.a", &(map->target_Ellipsoid.a), 0.005f, -FLT_MAX, FLT_MAX, "%f", flags);
+    ImGui::DragFloat("target_Ellipsoid.b", &(map->target_Ellipsoid.b), 0.005f, -FLT_MAX, FLT_MAX, "%f", flags);
+    ImGui::Separator();
+
+    ImGui::DragInt("source_projection.type", &(map->source_projection.type), 1.0F, 0, 1, "%d", flags);
+    ImGui::DragFloat("source_projection.p1", &(map->source_projection.p1), 0.005f, -FLT_MAX, FLT_MAX, "%f", flags);
+    ImGui::DragFloat("source_projection.p2", &(map->source_projection.p2), 0.005f, -FLT_MAX, FLT_MAX, "%f", flags);
+    ImGui::DragFloat("source_projection.p3", &(map->source_projection.p3), 0.005f, -FLT_MAX, FLT_MAX, "%f", flags);
+    ImGui::DragFloat("source_projection.p4", &(map->source_projection.p4), 0.005f, -FLT_MAX, FLT_MAX, "%f", flags);
+    ImGui::DragFloat("source_projection.p5", &(map->source_projection.p5), 0.005f, -FLT_MAX, FLT_MAX, "%f", flags);
+    ImGui::DragFloat("source_projection.p6", &(map->source_projection.p6), 0.005f, -FLT_MAX, FLT_MAX, "%f", flags);
+    ImGui::DragFloat("source_projection.p7", &(map->source_projection.p7), 0.005f, -FLT_MAX, FLT_MAX, "%f", flags);
+    ImGui::Separator();
+    ImGui::DragInt("target_projection.type", &(map->target_projection.type), 1.0F, 0, 1, "%d", flags);
+    ImGui::DragFloat("target_projection.p1", &(map->target_projection.p1), 0.005f, -FLT_MAX, FLT_MAX, "%f", flags);
+    ImGui::DragFloat("target_projection.p2", &(map->target_projection.p2), 0.005f, -FLT_MAX, FLT_MAX, "%f", flags);
+    ImGui::DragFloat("target_projection.p3", &(map->target_projection.p3), 0.005f, -FLT_MAX, FLT_MAX, "%f", flags);
+    ImGui::DragFloat("target_projection.p4", &(map->target_projection.p4), 0.005f, -FLT_MAX, FLT_MAX, "%f", flags);
+    ImGui::DragFloat("target_projection.p5", &(map->target_projection.p5), 0.005f, -FLT_MAX, FLT_MAX, "%f", flags);
+    ImGui::DragFloat("target_projection.p6", &(map->target_projection.p6), 0.005f, -FLT_MAX, FLT_MAX, "%f", flags);
+    ImGui::DragFloat("target_projection.p7", &(map->target_projection.p7), 0.005f, -FLT_MAX, FLT_MAX, "%f", flags);
+    ImGui::Separator();
+
+    ImGui::End();
+}
+
 void ShowMainMenu(imgui_main_menu_options_t *menu_options)
 {
     if (menu_options->file_options.requesting_close)
@@ -764,6 +803,7 @@ void ShowTools(imgui_tool_options_t *tool_options)
         ImGui::MenuItem("Model_tool", NULL, (bool *)&(tool_options->show_model_tool), has_debug_tools);
         ImGui::MenuItem("Camera_tool", NULL, (bool *)&(tool_options->show_camera_tool), has_debug_tools);
         ImGui::MenuItem("Task_Queue_tool", NULL, (bool *)&(tool_options->show_task_queue_tool), has_debug_tools);
+        ImGui::MenuItem("Map_tool", NULL, (bool *)&(tool_options->show_map_tool), has_debug_tools);
 
         ImGui::EndMenu();
     }
@@ -822,7 +862,8 @@ int imgui_draw(
     unsigned int numCameras,
     camera_t *cameraList,
     unsigned int numModels,
-    model_t *modelList)
+    model_t *modelList,
+    map_t *map)
 {
 
     ImGuiIO &io = ImGui::GetIO();
@@ -844,6 +885,8 @@ int imgui_draw(
         ShowCameraToolWindow((bool *)&(gui->options.tool_options.show_camera_tool), numCameras, cameraList);
     if (gui->options.tool_options.show_model_tool)
         ShowModelToolWindow((bool *)&(gui->options.tool_options.show_model_tool), numModels, modelList);
+    if (gui->options.tool_options.show_map_tool)
+        ShowMapToolWindow((bool *)&(gui->options.tool_options.show_map_tool), map);
 
     // Rendering
     ImGui::Render();

@@ -1,6 +1,10 @@
 #ifndef NONSTD_IMGUI_H
 #define NONSTD_IMGUI_H
 
+#include <nonstd.h>
+#include <nonstd_glfw_opengl.h>
+#include <tile_map.h>
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -26,6 +30,7 @@ extern "C"
         int show_model_tool;
         int show_camera_tool;
         int show_task_queue_tool;
+        int show_map_tool;
     } imgui_tool_options_t;
 
     typedef struct imgui_main_menu_options_s
@@ -50,16 +55,17 @@ extern "C"
     void ShowTools(imgui_tool_options_t *tool_options);
     void ShowClosePopUp(imgui_file_options_t *file_options);
 
-int imgui_draw(
-    nonstd_imgui_t *gui,
-    task_queue_t * tq,
-    unsigned int numCameras,
-    camera_t *cameraList,
-    unsigned int numModels,
-    model_t *modelList);
-    
-int imgui_capture_key();
-int imgui_capture_mouse();
+    int imgui_draw(
+        nonstd_imgui_t *gui,
+        task_queue_t *tq,
+        unsigned int numCameras,
+        camera_t *cameraList,
+        unsigned int numModels,
+        model_t *modelList,
+        map_t *map);
+
+    int imgui_capture_key();
+    int imgui_capture_mouse();
 
 #ifdef __cplusplus
 }

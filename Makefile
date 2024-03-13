@@ -1,5 +1,5 @@
 LIB_DIR = $(PWD)/external
-DEPS = nonstd nonstd_glfw_opengl 
+DEPS = nonstd nonstd_glfw_opengl nonstd_opengl_map
 LIB_DIRS =     $(foreach d, $(DEPS), $(LIB_DIR)/$d) $(LIB_DIR)/glew 
 LIB_INCLUDES = $(foreach d, $(LIB_DIRS), $d/include) 
 
